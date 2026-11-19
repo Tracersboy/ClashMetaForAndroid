@@ -1,6 +1,7 @@
 package com.github.kr328.clash.design.adapter
 
 import android.content.Context
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.github.kr328.clash.core.model.LogMessage
@@ -9,7 +10,7 @@ import com.github.kr328.clash.design.util.layoutInflater
 
 class LogMessageAdapter(
     private val context: Context,
-    private val copy: (LogMessage) -> Unit,
+    private val onLongClick: (View, LogMessage) -> Unit,
 ) :
     RecyclerView.Adapter<LogMessageAdapter.Holder>() {
     class Holder(val binding: AdapterLogMessageBinding) : RecyclerView.ViewHolder(binding.root)
@@ -27,8 +28,8 @@ class LogMessageAdapter(
         val current = messages[position]
 
         holder.binding.message = current
-        holder.binding.root.setOnLongClickListener {
-            copy(current)
+        holder.binding.root.setOnLongClickListener { view ->
+            onLongClick(view, current)
 
             true
         }

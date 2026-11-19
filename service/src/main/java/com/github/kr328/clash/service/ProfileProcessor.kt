@@ -5,17 +5,20 @@ import android.net.Uri
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.FetchStatus
+import com.github.kr328.clash.core.model.LocalConfigReport
 import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.Pending
 import com.github.kr328.clash.service.data.PendingDao
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.remote.IFetchObserver
+import com.github.kr328.clash.service.store.LocalConfigStore
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.pendingDir
 import com.github.kr328.clash.service.util.processingDir
 import com.github.kr328.clash.service.util.sendProfileChanged
+import com.github.kr328.clash.service.util.sendOverrideChanged
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -48,7 +51,7 @@ object ProfileProcessor {
                 Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
 
                 val force = snapshot.type != Profile.Type.File
-                val subscriptionInfo = fetchProfile(context, snapshot.source, force, callback)
+                val (subscriptionInfo, localReport) = fetchProfile(context, snapshot.source, force, callback)
 
                 profileLock.withLock {
                     if (PendingDao().queryByUUID(snapshot.uuid) == snapshot) {
@@ -82,6 +85,7 @@ object ProfileProcessor {
 
                         context.pendingDir.resolve(snapshot.uuid.toString()).deleteRecursively()
 
+                        acceptLocalReport(context, snapshot.uuid, localReport)
                         context.sendProfileChanged(snapshot.uuid)
                     }
                 }
@@ -107,7 +111,7 @@ object ProfileProcessor {
 
                 Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
 
-                val subscriptionInfo = fetchProfile(context, snapshot.source, true, callback)
+                val (subscriptionInfo, localReport) = fetchProfile(context, snapshot.source, true, callback)
 
                 profileLock.withLock {
                     val imported = ImportedDao().queryByUUID(snapshot.uuid)
@@ -127,6 +131,7 @@ object ProfileProcessor {
                             )
                         }
 
+                        acceptLocalReport(context, snapshot.uuid, localReport)
                         context.sendProfileChanged(snapshot.uuid)
                     }
                 }
@@ -139,13 +144,12 @@ object ProfileProcessor {
         source: String,
         force: Boolean,
         callback: IFetchObserver?,
-    ): FetchStatus? {
+    ): Pair<FetchStatus?, LocalConfigReport> {
         var subscriptionInfo: FetchStatus? = null
         var cb = callback
 
-        Clash.setCustomNodes(ServiceStore(context).customNodesConfigJson())
-
-        Clash.fetchAndValid(context.processingDir, source, force) {
+        val settings = LocalConfigStore(context).read().forCore()
+        val report = Clash.fetchAndValid(context.processingDir, source, force, settings) {
             if (it.action == FetchStatus.Action.SubscriptionInfo) {
                 subscriptionInfo = it
                 return@fetchAndValid
@@ -160,7 +164,13 @@ object ProfileProcessor {
             }
         }.await()
 
-        return subscriptionInfo
+        return subscriptionInfo to report
+    }
+
+    private fun acceptLocalReport(context: Context, uuid: UUID, report: LocalConfigReport) {
+        if (LocalConfigStore(context).acceptReport(report, uuid, applied = false) && ServiceStore(context).activeProfile != uuid) {
+            context.sendOverrideChanged()
+        }
     }
 
     suspend fun delete(context: Context, uuid: UUID) {

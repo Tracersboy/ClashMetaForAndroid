@@ -27,15 +27,16 @@ object Bridge {
     external fun nativeQueryGroup(name: String, sort: String): String?
     external fun nativeHealthCheck(completable: CompletableDeferred<Unit>, name: String)
     external fun nativeHealthCheckAll()
-    external fun nativePatchSelector(selector: String, name: String): Boolean
+    external fun nativePatchSelector(selector: String, name: String, closeConnections: Boolean): Boolean
     external fun nativeFetchAndValid(
         completable: FetchCallback,
         path: String,
         url: String,
+        settings: String,
         force: Boolean
     )
 
-    external fun nativeLoad(completable: CompletableDeferred<Unit>, path: String)
+    external fun nativeLoad(callback: FetchCallback, path: String, settings: String, apply: Boolean)
     external fun nativeQueryProviders(): String
     external fun nativeUpdateProvider(
         completable: CompletableDeferred<Unit>,
@@ -43,7 +44,7 @@ object Bridge {
         name: String
     )
 
-    external fun nativeSetCustomNodes(content: String)
+    external fun nativeParseLocalInput(content: String, rules: Boolean): String
     external fun nativeReadOverride(slot: Int): String
     external fun nativeWriteOverride(slot: Int, content: String)
     external fun nativeClearOverride(slot: Int)

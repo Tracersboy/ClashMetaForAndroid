@@ -131,7 +131,7 @@ func QueryProxyGroup(name string, sortMode SortMode, uiSubtitlePattern *regexp2.
 	}
 }
 
-func PatchSelector(selector, name string) bool {
+func PatchSelector(selector, name string, closeConnections bool) bool {
 	p := tunnel.Proxies()[selector]
 
 	if p == nil {
@@ -156,11 +156,14 @@ func PatchSelector(selector, name string) bool {
 
 	if err := s.Set(name); err != nil {
 		log.Warnln("Patch selector `%s`: %s", selector, err.Error())
+		return false
 	}
 
 	log.Infoln("Patch selector %s -> %s", selector, name)
 
-	closeConnByGroup(selector)
+	if closeConnections {
+		closeConnByGroup(selector)
+	}
 
 	return true
 }

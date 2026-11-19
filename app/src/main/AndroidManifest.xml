@@ -163,6 +163,11 @@
             android:exported="false"
             android:label="@string/custom_nodes" />
         <activity
+            android:name=".GlobalRulesActivity"
+            android:configChanges="uiMode"
+            android:exported="false"
+            android:label="@string/global_rules" />
+        <activity
             android:name=".AppSettingsActivity"
             android:configChanges="uiMode"
             android:exported="false"

@@ -20,7 +20,7 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
-            android:layout_toStartOf="@id/delete_view"
+            android:layout_toStartOf="@id/enabled_view"
             android:orientation="vertical">
 
             <TextView
@@ -36,6 +36,14 @@
                 android:layout_marginTop="@dimen/item_text_margin"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
         </LinearLayout>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/enabled_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_toStartOf="@id/delete_view"
+            android:contentDescription="@string/inject_custom_node" />
 
         <ImageView
             android:id="@+id/delete_view"

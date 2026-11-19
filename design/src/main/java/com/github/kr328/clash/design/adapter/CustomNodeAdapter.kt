@@ -12,6 +12,7 @@ class CustomNodeAdapter(
     private val context: Context,
     private val onClicked: (CustomNode) -> Unit,
     private val onDeleteClicked: (CustomNode) -> Unit,
+    private val onToggled: (CustomNode, Boolean) -> Unit,
 ) : RecyclerView.Adapter<CustomNodeAdapter.Holder>() {
     class Holder(val binding: AdapterCustomNodeBinding) : RecyclerView.ViewHolder(binding.root)
 
@@ -25,11 +26,11 @@ class CustomNodeAdapter(
         val current = nodes[position]
 
         holder.binding.nameView.text = current.name
-        holder.binding.addressView.text = context.getString(
-            R.string.format_custom_node_address,
-            current.server,
-            current.port,
-        )
+        holder.binding.addressView.text = if (current.address.isEmpty()) current.protocol
+        else context.getString(R.string.format_custom_node_detail, current.protocol, current.address)
+        holder.binding.enabledView.setOnCheckedChangeListener(null)
+        holder.binding.enabledView.isChecked = current.enabled
+        holder.binding.enabledView.setOnCheckedChangeListener { _, enabled -> onToggled(current, enabled) }
         holder.binding.root.setOnClickListener { onClicked(current) }
         holder.binding.deleteView.setOnClickListener { onDeleteClicked(current) }
     }

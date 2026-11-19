@@ -8,7 +8,6 @@ import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.model.CustomNode
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import java.util.*
 
 class ServiceStore(context: Context) {
@@ -29,22 +28,15 @@ class ServiceStore(context: Context) {
         encodeDefaults = true
     }
     private val customNodesSerializer = ListSerializer(CustomNode.serializer())
-    private var serializedCustomNodes: String by store.string(
+    private val serializedCustomNodes: String by store.string(
         key = "custom_nodes",
         defaultValue = "[]"
     )
 
-    var customNodes: List<CustomNode>
+    internal val legacyCustomNodes: List<CustomNode>
         get() = runCatching {
             customNodesJson.decodeFromString(customNodesSerializer, serializedCustomNodes)
         }.getOrDefault(emptyList())
-        set(value) {
-            serializedCustomNodes = customNodesJson.encodeToString(customNodesSerializer, value)
-        }
-
-    fun customNodesConfigJson(): String {
-        return JsonArray(customNodes.map(CustomNode::toConfig)).toString()
-    }
 
     var bypassPrivateNetwork: Boolean by store.boolean(
         key = "bypass_private_network",

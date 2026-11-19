@@ -23,6 +23,7 @@ import com.github.kr328.clash.log.LogcatReader
 import com.github.kr328.clash.util.logsDir
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import java.io.OutputStreamWriter
@@ -53,7 +54,9 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
             return showInvalid()
         }
 
-        val design = LogcatDesign(this, false)
+        val design = LogcatDesign(this, false) { destination ->
+            launch { addGlobalRuleFromLog(destination) }
+        }
 
         setContentDesign(design)
 
@@ -92,7 +95,9 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
     }
 
     private suspend fun mainStreaming() {
-        val design = LogcatDesign(this, true)
+        val design = LogcatDesign(this, true) { destination ->
+            launch { addGlobalRuleFromLog(destination) }
+        }
 
         setContentDesign(design)
 

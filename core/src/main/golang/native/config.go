@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	"cfa/native/config"
+	"cfa/native/localconfig"
 )
 
 type remoteValidCallback struct {
@@ -24,34 +25,36 @@ type ageKeyPair struct {
 }
 
 //export fetchAndValid
-func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force C.int) {
-	go func(path, url string, callback unsafe.Pointer) {
+func fetchAndValid(callback unsafe.Pointer, path, url, input C.c_string, force C.int) {
+	go func(path, url, input string) {
+		defer C.release_object(callback)
 		cb := &remoteValidCallback{callback: callback}
-
-		err := config.FetchAndValid(path, url, force != 0, cb.reportStatus)
-
-		C.fetch_complete(callback, marshalString(err))
-
-		C.release_object(callback)
-
+		settings, err := localconfig.Decode(input)
+		var report localconfig.Report
+		if err == nil {
+			report, err = config.FetchAndValid(path, url, force != 0, cb.reportStatus, settings)
+		}
+		C.fetch_complete(callback, marshalString(err), marshalJson(report))
 		runtime.GC()
-	}(C.GoString(path), C.GoString(url), callback)
+	}(C.GoString(path), C.GoString(url), C.GoString(input))
 }
 
 //export load
-func load(completable unsafe.Pointer, path C.c_string) {
-	go func(path string) {
-		C.complete(completable, marshalString(config.Load(path)))
-
-		C.release_object(completable)
-
-		runtime.GC()
-	}(C.GoString(path))
+func load(callback unsafe.Pointer, path, input C.c_string, apply C.int) {
+	go func(path, input string) {
+		defer C.release_object(callback)
+		settings, err := localconfig.Decode(input)
+		var report localconfig.Report
+		if err == nil {
+			report, err = config.Load(path, settings, apply != 0)
+		}
+		C.fetch_complete(callback, marshalString(err), marshalJson(report))
+	}(C.GoString(path), C.GoString(input))
 }
 
-//export setCustomNodes
-func setCustomNodes(content C.c_string) {
-	config.SetCustomNodes(C.GoString(content))
+//export parseLocalInput
+func parseLocalInput(content C.c_string, rules C.int) *C.char {
+	return marshalJson(localconfig.ParseInput(C.GoString(content), rules != 0))
 }
 
 //export readOverride

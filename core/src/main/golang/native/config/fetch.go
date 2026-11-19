@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"cfa/native/app"
+	"cfa/native/localconfig"
 
 	"github.com/metacubex/mihomo/adapter/provider"
 	clashHttp "github.com/metacubex/mihomo/component/http"
@@ -153,13 +154,14 @@ func FetchAndValid(
 	url string,
 	force bool,
 	reportStatus func(string),
-) error {
+	settings localconfig.Settings,
+) (localconfig.Report, error) {
 	configPath := P.Join(path, "config.yaml")
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) || force {
 		url, err := U.Parse(url)
 		if err != nil {
-			return err
+			return localconfig.Report{}, err
 		}
 
 		bytes, _ := json.Marshal(&Status{
@@ -173,7 +175,7 @@ func FetchAndValid(
 
 		header, err := fetch(url, configPath)
 		if err != nil {
-			return err
+			return localconfig.Report{}, err
 		}
 
 		reportSubscriptionInfo(header, reportStatus)
@@ -181,9 +183,9 @@ func FetchAndValid(
 
 	defer runtime.GC()
 
-	rawCfg, err := UnmarshalAndPatch(path)
+	rawCfg, err := readProfile(path)
 	if err != nil {
-		return err
+		return localconfig.Report{}, err
 	}
 
 	forEachProviders(rawCfg, func(index int, total int, name string, provider map[string]any, prefix string) {
@@ -247,12 +249,16 @@ func FetchAndValid(
 
 	reportStatus(string(bytes))
 
-	cfg, err := Parse(rawCfg)
+	report, err := applyLocalConfig(rawCfg, settings)
 	if err != nil {
-		return err
+		return report, err
+	}
+	cfg, err := parse(rawCfg, settings)
+	if err != nil {
+		return report, err
 	}
 
 	destroyProviders(cfg)
 
-	return nil
+	return report, nil
 }

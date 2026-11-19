@@ -22,6 +22,8 @@ import com.github.kr328.clash.design.util.resolveThemedColor
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.remote.Broadcasts
 import com.github.kr328.clash.remote.Remote
+import com.github.kr328.clash.service.store.LocalConfigStore
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.github.kr328.clash.util.ActivityResultLifecycle
 import com.github.kr328.clash.util.ApplicationObserver
 import kotlinx.coroutines.*
@@ -105,6 +107,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         activityStarted = true
         Remote.broadcasts.addObserver(this)
         events.trySend(Event.ActivityStart)
+        showLocalRenameNotices()
     }
 
     override fun onStop() {
@@ -156,6 +159,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
 
     override fun onProfileChanged() {
         events.trySend(Event.ProfileChanged)
+        showLocalRenameNotices()
     }
 
     override fun onProfileUpdateCompleted(uuid: UUID?) {
@@ -168,6 +172,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
 
     override fun onProfileLoaded() {
         events.trySend(Event.ProfileLoaded)
+        showLocalRenameNotices()
     }
 
     override fun onServiceRecreated() {
@@ -184,6 +189,22 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         if (cause != null && activityStarted) {
             launch {
                 design?.showExceptionToast(ClashException(cause))
+            }
+        }
+    }
+
+    protected fun showLocalRenameNotices() {
+        if (!activityStarted) return
+        launch {
+            val notices = withContext(Dispatchers.IO) { LocalConfigStore(this@BaseActivity).takeRenameNotices() }
+            if (notices.isNotEmpty() && !isFinishing) {
+                MaterialAlertDialogBuilder(this@BaseActivity)
+                    .setTitle(R.string.custom_node_renamed)
+                    .setMessage(notices.joinToString("\n") {
+                        getString(R.string.custom_node_rename_pair, it.from, it.to)
+                    })
+                    .setPositiveButton(R.string.ok, null)
+                    .show()
             }
         }
     }

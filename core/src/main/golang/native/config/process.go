@@ -9,6 +9,7 @@ import (
 	"github.com/dlclark/regexp2"
 
 	"cfa/native/common"
+	"cfa/native/localconfig"
 
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/config"
@@ -17,36 +18,28 @@ import (
 )
 
 var processors = []processor{
-	patchExternalController, // must before patchOverride, so we only apply ExternalController in Override settings
-	patchOverride,
-	patchCustomNodes,
 	patchGeneral,
 	patchProfile,
 	patchDns,
 	patchTun,
 	patchListeners,
 	patchProviders,
-	validConfig,
 }
 
 type processor func(cfg *config.RawConfig, profileDir string) error
 
-func patchOverride(cfg *config.RawConfig, _ string) error {
+func patchOverride(cfg *config.RawConfig) {
 	if err := json.NewDecoder(strings.NewReader(ReadOverride(OverrideSlotPersist))).Decode(cfg); err != nil {
 		log.Warnln("Apply persist override: %s", err.Error())
 	}
 	if err := json.NewDecoder(strings.NewReader(ReadOverride(OverrideSlotSession))).Decode(cfg); err != nil {
 		log.Warnln("Apply session override: %s", err.Error())
 	}
-
-	return nil
 }
 
-func patchExternalController(cfg *config.RawConfig, _ string) error {
+func patchExternalController(cfg *config.RawConfig) {
 	cfg.ExternalController = ""
 	cfg.ExternalControllerTLS = ""
-
-	return nil
 }
 
 func patchGeneral(cfg *config.RawConfig, profileDir string) error {
@@ -123,7 +116,7 @@ func patchProviders(cfg *config.RawConfig, profileDir string) error {
 	return nil
 }
 
-func validConfig(cfg *config.RawConfig, _ string) error {
+func validConfig(cfg *config.RawConfig) error {
 	if len(cfg.Proxy) == 0 && len(cfg.ProxyProvider) == 0 {
 		return errors.New("profile does not contain `proxies` or `proxy-providers`")
 	}
@@ -135,12 +128,22 @@ func validConfig(cfg *config.RawConfig, _ string) error {
 	return nil
 }
 
-func process(cfg *config.RawConfig, profileDir string) error {
+func prepareProfile(cfg *config.RawConfig, profileDir string) error {
+	// Only overrides may configure the controller.
+	patchExternalController(cfg)
+	patchOverride(cfg)
 	for _, p := range processors {
 		if err := p(cfg, profileDir); err != nil {
 			return err
 		}
 	}
-
 	return nil
+}
+
+func applyLocalConfig(cfg *config.RawConfig, settings localconfig.Settings) (localconfig.Report, error) {
+	report, err := localconfig.Apply(cfg, settings)
+	if err == nil {
+		err = validConfig(cfg)
+	}
+	return report, err
 }

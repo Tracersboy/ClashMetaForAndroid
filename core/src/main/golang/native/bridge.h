@@ -17,7 +17,7 @@ extern void (*complete_func)(void *completable, const char *exception);
 
 extern void (*fetch_report_func)(void *fetch_callback, const char *status_json);
 
-extern void (*fetch_complete_func)(void *fetch_callback, const char *error);
+extern void (*fetch_complete_func)(void *fetch_callback, const char *error, const char *result);
 
 extern int (*logcat_received_func)(void *logcat_interface, const char *payload);
 
@@ -32,7 +32,7 @@ extern int query_socket_uid(void *interface, int protocol, char *source, char *t
 
 extern void complete(void *obj, char *error);
 
-extern void fetch_complete(void *completable, char *exception);
+extern void fetch_complete(void *completable, char *exception, char *result);
 
 extern void fetch_report(void *fetch_callback, char *status_json);
 

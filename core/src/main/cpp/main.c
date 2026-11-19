@@ -204,38 +204,40 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeHealthCheckAll(JNIEnv *env,
 
 JNIEXPORT jboolean JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativePatchSelector(JNIEnv *env, jobject thiz,
-                                                                   jstring selector, jstring name) {
+                                                                   jstring selector, jstring name,
+                                                                   jboolean close_connections) {
     TRACE_METHOD();
 
     scoped_string _selector = get_string(selector);
     scoped_string _name = get_string(name);
 
-    return (jboolean) patchSelector(_selector, _name);
+    return (jboolean) patchSelector(_selector, _name, close_connections);
 }
 
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeLoad(JNIEnv *env, jobject thiz,
-                                                          jobject completable, jstring path) {
+                                                          jobject callback, jstring path,
+                                                          jstring settings, jboolean apply) {
     TRACE_METHOD();
 
-    jobject _completable = new_global(completable);
+    jobject _callback = new_global(callback);
     scoped_string _path = get_string(path);
-
-    load(_completable, _path);
+    scoped_string _settings = get_string(settings);
+    load(_callback, _path, _settings, apply);
 }
 
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeFetchAndValid(JNIEnv *env, jobject thiz,
                                                                     jobject callback,
-                                                                    jstring path,
-                                                                    jstring url, jboolean force) {
+                                                                    jstring path, jstring url,
+                                                                    jstring settings, jboolean force) {
     TRACE_METHOD();
 
-    jobject _completable = new_global(callback);
+    jobject _callback = new_global(callback);
     scoped_string _path = get_string(path);
     scoped_string _url = get_string(url);
-
-    fetchAndValid(_completable, _path, _url, force);
+    scoped_string _settings = get_string(settings);
+    fetchAndValid(_callback, _path, _url, _settings, force);
 }
 
 JNIEXPORT void JNICALL
@@ -343,14 +345,14 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeUpdateProvider(JNIEnv *env,
     updateProvider(_completable, _type, _name);
 }
 
-JNIEXPORT void JNICALL
-Java_com_github_kr328_clash_core_bridge_Bridge_nativeSetCustomNodes(JNIEnv *env, jobject thiz,
-                                                                    jstring content) {
+JNIEXPORT jstring JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeParseLocalInput(JNIEnv *env, jobject thiz,
+                                                                    jstring content, jboolean rules) {
     TRACE_METHOD();
 
     scoped_string _content = get_string(content);
-
-    setCustomNodes(_content);
+    scoped_string response = parseLocalInput(_content, rules);
+    return new_string(response);
 }
 
 JNIEXPORT jstring JNICALL
@@ -477,20 +479,17 @@ static void call_fetch_callback_report_impl(void *fetch_callback, const char *st
                            (jstring) _status_json);
 }
 
-static void call_fetch_callback_complete_impl(void *fetch_callback, const char *error) {
+static void call_fetch_callback_complete_impl(void *fetch_callback, const char *error, const char *result) {
     TRACE_METHOD();
 
     ATTACH_JNI();
 
-    jstring _error = NULL;
-
-    if (error != NULL)
-        _error = new_string(error);
-
+    jstring _error = error == NULL ? NULL : new_string(error);
+    jstring _result = result == NULL ? NULL : new_string(result);
     (*env)->CallVoidMethod(env,
                            (jobject) fetch_callback,
                            (jmethodID) m_fetch_callback_complete,
-                           (jstring) _error);
+                           (jstring) _error, (jstring) _result);
 }
 
 static int call_logcat_interface_received_impl(void *callback, const char *payload) {
@@ -579,7 +578,7 @@ JNI_OnLoad(JavaVM *vm, void *reserved) {
     m_fetch_callback_report = find_method(c_fetch_callback, "report",
                                           "(Ljava/lang/String;)V");
     m_fetch_callback_complete = find_method(c_fetch_callback, "complete",
-                                            "(Ljava/lang/String;)V");
+                                            "(Ljava/lang/String;Ljava/lang/String;)V");)V");
     m_completable_complete_exceptionally = find_method(c_completable, "completeExceptionally",
                                                        "(Ljava/lang/Throwable;)Z");
     m_logcat_interface_received = find_method(c_logcat_interface, "received",

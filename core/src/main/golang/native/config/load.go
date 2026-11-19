@@ -1,12 +1,14 @@
 package config
 
 import (
+	"errors"
 	"os"
 	P "path"
 	"runtime"
 	"strings"
 
 	"cfa/native/app"
+	"cfa/native/localconfig"
 
 	"github.com/metacubex/mihomo/common/yaml"
 	"github.com/metacubex/mihomo/config"
@@ -29,60 +31,46 @@ func logDns(cfg *config.RawConfig) {
 	}
 }
 
-func UnmarshalAndPatch(profilePath string) (*config.RawConfig, error) {
+func readProfile(profilePath string) (*config.RawConfig, error) {
 	configPath := P.Join(profilePath, "config.yaml")
-
 	configData, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err
 	}
-
-	rawConfig, err := config.UnmarshalRawConfig(configData)
+	raw, err := config.UnmarshalRawConfig(configData)
 	if err != nil {
 		return nil, err
 	}
-
-	if err := process(rawConfig, profilePath); err != nil {
-		return nil, err
-	}
-
-	return rawConfig, nil
+	return raw, prepareProfile(raw, profilePath)
 }
 
-func Parse(rawConfig *config.RawConfig) (*config.Config, error) {
-	cfg, err := config.ParseRawConfig(rawConfig)
-	if err != nil {
-		return nil, err
+func parse(raw *config.RawConfig, settings localconfig.Settings) (*config.Config, error) {
+	cfg, err := config.ParseRawConfig(raw)
+	if err != nil && (len(settings.Nodes) != 0 || len(settings.Rules) != 0) {
+		// Parser errors can include values from imported proxy mappings.
+		return nil, errors.New("subscription or local configuration failed validation")
 	}
-
-	return cfg, nil
+	return cfg, err
 }
 
-func Load(path string) error {
-	rawCfg, err := UnmarshalAndPatch(path)
+func Load(path string, settings localconfig.Settings, apply bool) (localconfig.Report, error) {
+	raw, err := readProfile(path)
 	if err != nil {
-		log.Errorln("Load %s: %s", path, err.Error())
-
-		return err
+		return localconfig.Report{}, err
 	}
-
-	logDns(rawCfg)
-
-	cfg, err := Parse(rawCfg)
+	report, err := applyLocalConfig(raw, settings)
+	if err != nil || !apply {
+		return report, err
+	}
+	cfg, err := parse(raw, settings)
 	if err != nil {
-		log.Errorln("Load %s: %s", path, err.Error())
-
-		return err
+		return report, err
 	}
-
-	// like hub.Parse()
+	logDns(raw)
 	hub.ApplyConfig(cfg)
-
-	app.ApplySubtitlePattern(rawCfg.ClashForAndroid.UiSubtitlePattern)
-
+	app.ApplySubtitlePattern(raw.ClashForAndroid.UiSubtitlePattern)
 	runtime.GC()
-
-	return nil
+	return report, nil
 }
 
 func LoadDefault() {

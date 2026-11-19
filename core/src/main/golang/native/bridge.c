@@ -9,7 +9,7 @@ void (*complete_func)(void *completable, const char *exception);
 
 void (*fetch_report_func)(void *fetch_callback, const char *status_json);
 
-void (*fetch_complete_func)(void *fetch_callback, const char *error);
+void (*fetch_complete_func)(void *fetch_callback, const char *error, const char *result);
 
 int (*logcat_received_func)(void *logcat_interface, const char *payload);
 
@@ -42,10 +42,11 @@ void complete(void *obj, char *error) {
     free(error);
 }
 
-void fetch_complete(void *fetch_callback, char *exception) {
+void fetch_complete(void *fetch_callback, char *exception, char *result) {
     TRACE_METHOD();
 
-    fetch_complete_func(fetch_callback, exception);
+    fetch_complete_func(fetch_callback, exception, result);
+    free(result);
 
     free(exception);
 }

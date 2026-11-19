@@ -1,190 +1,121 @@
 package customnodes
 
 import (
-	"fmt"
 	"reflect"
-	"strings"
 	"testing"
 )
 
-const testCustomNodes = `[
-  {"name":"HS-HK","type":"anytls","server":"192.0.2.1","port":20104,"password":"secret-a","client-fingerprint":"chrome","udp":true,"sni":"example.com","alpn":["h2","http/1.1"],"skip-cert-verify":true},
-  {"name":"HS-SGP","type":"anytls","server":"192.0.2.2","port":20105,"password":"secret-b","client-fingerprint":"chrome","udp":true,"alpn":[],"skip-cert-verify":false}
-]`
-
-func useTestCustomNodes(t *testing.T, content string) {
-	t.Helper()
-	Set(content)
-	t.Cleanup(func() { Set("[]") })
+func node(id, name string, enabled bool) Node {
+	return Node{ID: id, Enabled: enabled, Config: map[string]any{
+		"name": name, "type": "http", "server": "example.test", "port": 8080,
+	}}
 }
 
-func TestPatchPrependsProxiesAndGroups(t *testing.T) {
-	useTestCustomNodes(t, testCustomNodes)
-	proxies := []map[string]any{{"name": "Subscription", "type": "ss"}}
+func TestPatchPreservesFirstAndDynamicGroups(t *testing.T) {
+	proxies := []map[string]any{{"name": "Subscription"}, {"name": "Other"}}
 	groups := []map[string]any{
-		{"name": "Select", "type": "select", "proxies": []any{"HS-HK", "Subscription"}},
-		{"name": "ProviderOnly", "type": "select", "use": []string{"provider"}},
-		{"name": "StringSlice", "type": "fallback", "proxies": []string{"Subscription"}},
+		{"name": "Select", "proxies": []any{"Subscription", "Other"}, "default-selected": "Other"},
+		{"name": "Dynamic", "use": []string{"provider"}},
+		{"name": "All", "include-all": true},
+		{"name": "Filter", "include-all-proxies": true, "filter": "^Subscription$"},
 	}
-
-	patched, err := Patch(proxies, groups, nil)
+	providers := map[string]map[string]any{"provider": {"type": "inline"}}
+	result, err := Patch(proxies, groups, providers, []Node{
+		node("a", "Local A", true), node("b", "Local B", false), node("c", "Local C", true),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	if got := []string{patched[0]["name"].(string), patched[1]["name"].(string), patched[2]["name"].(string)}; !reflect.DeepEqual(got, []string{"HS-HK", "HS-SGP", "Subscription"}) {
-		t.Fatalf("unexpected proxy order: %v", got)
+	if len(result.Proxies) != 4 || result.Proxies[0]["name"] != "Subscription" ||
+		result.Proxies[2]["name"] != "Local A" || result.NodeNames["b"] != "" {
+		t.Fatalf("unexpected injected list or disabled node")
 	}
-	if got := patched[0]["port"]; got != 20104 {
-		t.Fatalf("port type/value was not preserved: %T %v", got, got)
+	want := [][]string{
+		{"Subscription", "Local A", "Local C", "Other"},
+		nil,
+		{"Other", "Local A", "Local C", "Subscription"},
+		{"Subscription", "Local A", "Local C"},
 	}
-	if got := patched[0]["client-fingerprint"]; got != "chrome" {
-		t.Fatalf("missing client fingerprint: %v", got)
-	}
-
-	for _, group := range groups {
+	for i, group := range groups {
 		got, err := groupProxies(group["proxies"])
-		if err != nil {
-			t.Fatal(err)
+		if err != nil || !reflect.DeepEqual(got, want[i]) {
+			t.Fatalf("group %s: got %v, want %v, err %v", group["name"], got, want[i], err)
 		}
-		want := []string{"HS-HK", "HS-SGP", "Subscription"}
-		if group["name"] == "ProviderOnly" {
-			want = []string{"HS-HK", "HS-SGP"}
-		}
-		if !reflect.DeepEqual(got, want) {
-			t.Errorf("group %v: got %v, want %v", group["name"], got, want)
-		}
-		if group["name"] == "ProviderOnly" && !reflect.DeepEqual(group["use"], []string{"provider"}) {
-			t.Errorf("provider references were changed: %v", group["use"])
-		}
+	}
+	if groups[0]["default-selected"] != "Other" || !reflect.DeepEqual(groups[1]["use"], []string{"provider"}) {
+		t.Fatal("existing default or dynamic members changed")
+	}
+	if groups[2]["include-all"] != false || groups[2]["include-all-providers"] != true {
+		t.Fatal("include-all could put a custom node into the first position")
 	}
 }
 
-func TestPatchEmptyListIsNoOp(t *testing.T) {
-	useTestCustomNodes(t, "[]")
-	proxies := []map[string]any{{"name": "Subscription"}}
-	groups := []map[string]any{{"name": "Select", "proxies": []string{"Subscription"}}}
-
-	patched, err := Patch(proxies, groups, nil)
+func TestPatchRenamesConflictsWithoutChangingSubscriptionReferences(t *testing.T) {
+	proxies := []map[string]any{{"name": "Original"}, {"name": "Original冲突"}}
+	groups := []map[string]any{{"name": "Policy", "proxies": []string{"Original"}}}
+	local := node("local", "Original", true)
+	result, err := Patch(proxies, groups, nil, []Node{local, node("other", "Original冲突2", false)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(patched) != 1 || !reflect.DeepEqual(groups[0]["proxies"], []string{"Subscription"}) {
-		t.Fatal("empty custom node list changed the profile")
+	if want := (Rename{ID: "local", From: "Original", To: "Original冲突3", Base: "Original"}); !reflect.DeepEqual(result.Renames, []Rename{want}) {
+		t.Fatalf("renames: %+v", result.Renames)
+	}
+	if local.Config["name"] != "Original" || proxies[0]["name"] != "Original" {
+		t.Fatal("changed an input name")
+	}
+	if got := groups[0]["proxies"]; !reflect.DeepEqual(got, []string{"Original", "Original冲突3"}) {
+		t.Fatalf("proxy list: %v", got)
+	}
+
+	// A later profile may also occupy the name saved after the first collision.
+	newLocal := node("local", "Original冲突3", true)
+	newLocal.ConflictBase = "Original"
+	result, err = Patch([]map[string]any{{"name": "Original冲突3"}}, nil, nil, []Node{newLocal})
+	if err != nil || result.NodeNames["local"] != "Original冲突4" {
+		t.Fatalf("did not reuse the original rename base: %v, %v", result.Renames, err)
 	}
 }
 
-func TestPatchRejectsNameConflict(t *testing.T) {
-	useTestCustomNodes(t, testCustomNodes)
-	proxies := []map[string]any{{"name": "HS-HK"}}
-
-	_, err := Patch(proxies, nil, nil)
-	if err == nil || !strings.Contains(err.Error(), "conflicts") {
-		t.Fatalf("expected name conflict, got %v", err)
+func TestPatchKeepsUseOnlyGroupAndRenamesCollidingStaticProvider(t *testing.T) {
+	proxies := []map[string]any{{"name": "Subscription"}}
+	providers := map[string]map[string]any{
+		"Dynamic": {"type": "inline"},
+		"Mixed":   {"type": "inline", "payload": []any{map[string]any{"name": "Local"}}},
 	}
-}
-
-func TestPatchRejectsReservedNames(t *testing.T) {
-	for _, name := range []string{"DIRECT", "REJECT", "REJECT-DROP", "COMPATIBLE", "PASS", "PASS-RULE", "GLOBAL"} {
-		t.Run(name, func(t *testing.T) {
-			content := fmt.Sprintf(`[{"name":%q,"type":"anytls","server":"192.0.2.1","port":443,"password":"secret"}]`, name)
-			useTestCustomNodes(t, content)
-			if _, err := Patch(nil, nil, nil); err == nil || !strings.Contains(err.Error(), "reserved") {
-				t.Fatalf("expected reserved name error, got %v", err)
-			}
-		})
-	}
-}
-
-func TestPatchRejectsMalformedGroup(t *testing.T) {
-	useTestCustomNodes(t, testCustomNodes)
-	groups := []map[string]any{{"name": "Broken", "proxies": "Subscription"}}
-
-	if _, err := Patch(nil, groups, nil); err == nil {
-		t.Fatal("expected malformed proxies error")
-	}
-}
-
-func TestPatchRejectsInvalidJSON(t *testing.T) {
-	useTestCustomNodes(t, "not-json")
-	if _, err := Patch(nil, nil, nil); err == nil {
-		t.Fatal("expected JSON error")
-	}
-}
-
-func TestPatchExpandsIncludeAllWithoutDuplicates(t *testing.T) {
-	useTestCustomNodes(t, testCustomNodes)
-	proxies := []map[string]any{{"name": "B"}, {"name": "A"}}
 	groups := []map[string]any{
-		{"name": "All", "proxies": []string{"B"}, "include-all": true},
-		{"name": "Filtered", "include-all-proxies": true, "filter": "^A$"},
+		{"name": "Dynamic", "use": []string{"Dynamic"}},
+		{"name": "Mixed", "proxies": []string{"Subscription"}, "use": []string{"Mixed"}},
 	}
-
-	if _, err := Patch(proxies, groups, nil); err != nil {
+	result, err := Patch(proxies, groups, providers, []Node{node("a", "Local", true)})
+	if err != nil {
 		t.Fatal(err)
 	}
-
-	wantAll := []string{"HS-HK", "HS-SGP", "B", "A"}
-	if got := groups[0]["proxies"]; !reflect.DeepEqual(got, wantAll) {
-		t.Fatalf("include-all got %v, want %v", got, wantAll)
+	if result.NodeNames["a"] != "Local冲突" || providers["Dynamic"] == nil || groups[0]["proxies"] != nil {
+		t.Fatal("provider-only membership or provider node collision not preserved")
 	}
-	if groups[0]["include-all"] != false || groups[0]["include-all-proxies"] != false || groups[0]["include-all-providers"] != true {
-		t.Fatalf("include-all flags were not normalized: %v", groups[0])
-	}
-
-	wantFiltered := []string{"HS-HK", "HS-SGP", "A"}
-	if got := groups[1]["proxies"]; !reflect.DeepEqual(got, wantFiltered) {
-		t.Fatalf("filtered include-all got %v, want %v", got, wantFiltered)
+	uses := groups[1]["use"].([]string)
+	if len(uses) != 1 || uses[0] == "Mixed" || providers[uses[0]] == nil {
+		t.Fatal("mixed group's provider reference was not kept functional")
 	}
 }
 
-func TestPatchProviderRenameAvoidsAllGroupNames(t *testing.T) {
-	for _, reverse := range []bool{false, true} {
-		t.Run(fmt.Sprintf("reverse-%v", reverse), func(t *testing.T) {
-			useTestCustomNodes(t, testCustomNodes)
-			providers := map[string]map[string]any{"P": {"type": "inline"}}
-			groups := []map[string]any{
-				{"name": "P", "use": []string{"P"}},
-				{"name": "__cmfa_provider_P", "use": []string{"P"}},
-			}
-			if reverse {
-				groups[0], groups[1] = groups[1], groups[0]
-			}
-
-			if _, err := Patch(nil, groups, providers); err != nil {
-				t.Fatal(err)
-			}
-			if providers["__cmfa_provider_P_2"] == nil {
-				t.Fatalf("provider was not assigned a collision-free name: %v", providers)
-			}
-			for _, group := range groups {
-				if got := group["use"].([]string)[0]; got != "__cmfa_provider_P_2" {
-					t.Fatalf("group %v has stale provider reference %q", group["name"], got)
-				}
-			}
-		})
-	}
-}
-
-func TestPatchRenamesProviderConflictsAndUpdatesUse(t *testing.T) {
-	useTestCustomNodes(t, testCustomNodes)
-	providers := map[string]map[string]any{"P": {"type": "http"}}
+func TestPatchAvoidsDialerCycle(t *testing.T) {
+	proxies := []map[string]any{{"name": "Subscription"}}
 	groups := []map[string]any{
-		{"name": "P", "use": []any{"P"}},
-		{"name": "Other", "use": []string{"P"}},
+		{"name": "Outer", "proxies": []string{"Inner"}},
+		{"name": "Inner", "proxies": []string{"Subscription"}},
+		{"name": "Other", "proxies": []string{"Subscription"}},
 	}
-
-	if _, err := Patch(nil, groups, providers); err != nil {
+	local := node("a", "Local", true)
+	local.Config["dialer-proxy"] = "Outer"
+	_, err := Patch(proxies, groups, nil, []Node{local})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, exists := providers["P"]; exists {
-		t.Fatal("conflicting provider name was not renamed")
-	}
-	newName := groups[0]["use"].([]string)[0]
-	if !strings.HasPrefix(newName, "__cmfa_provider_P") {
-		t.Fatalf("unexpected provider name %q", newName)
-	}
-	if providers[newName] == nil || groups[1]["use"].([]string)[0] != newName {
-		t.Fatal("provider references were not updated")
+	for i, want := range [][]string{{"Inner"}, {"Subscription"}, {"Subscription", "Local"}} {
+		if got := groups[i]["proxies"]; !reflect.DeepEqual(got, want) {
+			t.Fatalf("group %s: got %v, want %v", groups[i]["name"], got, want)
+		}
 	}
 }

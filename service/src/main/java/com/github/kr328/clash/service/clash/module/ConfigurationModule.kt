@@ -7,6 +7,7 @@ import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.StatusProvider
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.SelectionDao
+import com.github.kr328.clash.service.store.LocalConfigStore
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.sendProfileLoaded
@@ -18,6 +19,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
     data class LoadException(val message: String)
 
     private val store = ServiceStore(service)
+    private val localConfig = LocalConfigStore(service)
     private val reload = Channel<Unit>(Channel.CONFLATED)
 
     override suspend fun run() {
@@ -56,15 +58,27 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                     ?: throw NullPointerException("No profile selected")
 
                 Clash.setAgeSecretKey(active.ageSecretKey?.takeIf { it.isNotBlank() })
-                Clash.setCustomNodes(store.customNodesConfigJson())
+                val settings = localConfig.read()
+                val report = Clash.load(service.importedDir.resolve(active.uuid.toString()), settings.forCore()).await()
+                localConfig.acceptReport(report, active.uuid, applied = true)
 
-                Clash.load(service.importedDir.resolve(active.uuid.toString())).await()
-
-                val remove = SelectionDao().querySelections(active.uuid)
-                    .filterNot { Clash.patchSelector(it.proxy, it.selected) }
-                    .map { it.proxy }
-
-                SelectionDao().removeSelections(active.uuid, remove)
+                val oldNames = settings.applied?.takeIf { it.profile == active.uuid.toString() }
+                    ?.report?.nodeNames.orEmpty()
+                val selections = SelectionDao()
+                val remove = selections.querySelections(active.uuid).mapNotNull { selection ->
+                    val nodeId = LocalConfigStore.selectedNode(selection.selected)
+                        ?: oldNames.entries.firstOrNull { it.value == selection.selected }?.key
+                    val name = if (nodeId == null) selection.selected else report.nodeNames[nodeId]
+                    if (name == null || !Clash.patchSelector(selection.proxy, name, closeConnections = false)) {
+                        selection.proxy
+                    } else {
+                        if (nodeId != null && LocalConfigStore.selectedNode(selection.selected) == null) {
+                            selections.setSelected(selection.copy(selected = LocalConfigStore.selectionForNode(nodeId)))
+                        }
+                        null
+                    }
+                }
+                selections.removeSelections(active.uuid, remove)
 
                 StatusProvider.currentProfile = active.name
 

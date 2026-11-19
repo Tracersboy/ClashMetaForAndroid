@@ -24,6 +24,8 @@ class SettingsActivity : BaseActivity<SettingsDesign>() {
                             startActivity(NetworkSettingsActivity::class.intent)
                         SettingsDesign.Request.StartCustomNodes ->
                             startActivity(CustomNodesActivity::class.intent)
+                        SettingsDesign.Request.StartGlobalRules ->
+                            startActivity(GlobalRulesActivity::class.intent)
                         SettingsDesign.Request.StartOverride ->
                             startActivity(OverrideSettingsActivity::class.intent)
                         SettingsDesign.Request.StartMetaFeature ->

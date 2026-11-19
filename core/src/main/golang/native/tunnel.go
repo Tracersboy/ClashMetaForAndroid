@@ -80,11 +80,11 @@ func healthCheckAll() {
 }
 
 //export patchSelector
-func patchSelector(selector, name C.c_string) C.int {
+func patchSelector(selector, name C.c_string, closeConnections C.int) C.int {
 	s := C.GoString(selector)
 	n := C.GoString(name)
 
-	if tunnel.PatchSelector(s, n) {
+	if tunnel.PatchSelector(s, n, closeConnections != 0) {
 		return 1
 	}
 

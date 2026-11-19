@@ -129,46 +129,57 @@ object Clash {
         Bridge.nativeHealthCheckAll()
     }
 
-    fun patchSelector(selector: String, name: String): Boolean {
-        return Bridge.nativePatchSelector(selector, name)
+    fun patchSelector(selector: String, name: String, closeConnections: Boolean = true): Boolean {
+        return Bridge.nativePatchSelector(selector, name, closeConnections)
     }
 
     fun fetchAndValid(
         path: File,
         url: String,
         force: Boolean,
-        reportStatus: (FetchStatus) -> Unit
-    ): CompletableDeferred<Unit> {
-        return CompletableDeferred<Unit>().apply {
-            Bridge.nativeFetchAndValid(
-                object : FetchCallback {
-                    override fun report(statusJson: String) {
-                        reportStatus(
-                            Json.Default.decodeFromString(
-                                FetchStatus.serializer(),
-                                statusJson
-                            )
-                        )
-                    }
-
-                    override fun complete(error: String?) {
-                        if (error != null)
-                            completeExceptionally(ClashException(error))
-                        else
-                            complete(Unit)
-                    }
-                },
-                path.absolutePath,
-                url,
-                force
-            )
-        }
+        settings: LocalConfig,
+        reportStatus: (FetchStatus) -> Unit,
+    ): CompletableDeferred<LocalConfigReport> = configurationRequest(reportStatus) { callback ->
+        Bridge.nativeFetchAndValid(
+            callback,
+            path.absolutePath,
+            url,
+            Json.encodeToString(LocalConfig.serializer(), settings),
+            force,
+        )
     }
 
-    fun load(path: File): CompletableDeferred<Unit> {
-        return CompletableDeferred<Unit>().apply {
-            Bridge.nativeLoad(this, path.absolutePath)
-        }
+    fun load(
+        path: File,
+        settings: LocalConfig,
+        apply: Boolean = true,
+    ): CompletableDeferred<LocalConfigReport> = configurationRequest { callback ->
+        Bridge.nativeLoad(callback, path.absolutePath, Json.encodeToString(LocalConfig.serializer(), settings), apply)
+    }
+
+    private fun configurationRequest(
+        reportStatus: (FetchStatus) -> Unit = {},
+        start: (FetchCallback) -> Unit,
+    ): CompletableDeferred<LocalConfigReport> = CompletableDeferred<LocalConfigReport>().apply {
+        start(object : FetchCallback {
+            override fun report(statusJson: String) {
+                reportStatus(Json.decodeFromString(FetchStatus.serializer(), statusJson))
+            }
+
+            override fun complete(error: String?, resultJson: String?) {
+                if (error != null) {
+                    completeExceptionally(ClashException(error))
+                    return
+                }
+                runCatching { Json.decodeFromString(LocalConfigReport.serializer(), checkNotNull(resultJson)) }
+                    .onSuccess { complete(it) }
+                    .onFailure { completeExceptionally(ClashException("Invalid local configuration result")) }
+            }
+        })
+    }
+
+    fun parseLocalInput(content: String, rules: Boolean): LocalInput {
+        return Json.decodeFromString(LocalInput.serializer(), Bridge.nativeParseLocalInput(content, rules))
     }
 
     fun queryProviders(): List<Provider> {
@@ -184,10 +195,6 @@ object Clash {
         return CompletableDeferred<Unit>().apply {
             Bridge.nativeUpdateProvider(this, type.toString(), name)
         }
-    }
-
-    fun setCustomNodes(content: String) {
-        Bridge.nativeSetCustomNodes(content)
     }
 
     fun queryOverride(slot: OverrideSlot): ConfigurationOverride {

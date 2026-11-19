@@ -8,6 +8,7 @@ import com.github.kr328.clash.service.data.Selection
 import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.ILogObserver
+import com.github.kr328.clash.service.store.LocalConfigStore
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.sendOverrideChanged
 import kotlinx.coroutines.*
@@ -51,7 +52,11 @@ class ClashManager(private val context: Context) : IClashManager,
             val current = store.activeProfile ?: return@also
 
             if (it) {
-                SelectionDao().setSelected(Selection(current, group, name))
+                val nodeId = LocalConfigStore(context).read().applied
+                    ?.takeIf { it.profile == current.toString() }
+                    ?.report?.nodeNames?.entries?.firstOrNull { it.value == name }?.key
+                val saved = nodeId?.let { LocalConfigStore.selectionForNode(it) } ?: name
+                SelectionDao().setSelected(Selection(current, group, saved))
             } else {
                 SelectionDao().removeSelected(current, group)
             }

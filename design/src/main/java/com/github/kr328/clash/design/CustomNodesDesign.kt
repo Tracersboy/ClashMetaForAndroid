@@ -3,6 +3,7 @@ package com.github.kr328.clash.design
 import android.content.Context
 import android.view.View
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.widget.doOnTextChanged
 import com.github.kr328.clash.design.adapter.CustomNodeAdapter
 import com.github.kr328.clash.design.databinding.CustomNodeDialogBinding
@@ -21,8 +22,10 @@ import kotlin.coroutines.resume
 class CustomNodesDesign(context: Context) : Design<CustomNodesDesign.Request>(context) {
     sealed class Request {
         object Create : Request()
+        object Import : Request()
         data class Edit(val node: CustomNode) : Request()
         data class Delete(val node: CustomNode) : Request()
+        data class Toggle(val id: String, val enabled: Boolean) : Request()
     }
 
     private val binding = DesignCustomNodesBinding
@@ -31,6 +34,7 @@ class CustomNodesDesign(context: Context) : Design<CustomNodesDesign.Request>(co
         context,
         onClicked = { requests.trySend(Request.Edit(it)) },
         onDeleteClicked = { requests.trySend(Request.Delete(it)) },
+        onToggled = { node, enabled -> requests.trySend(Request.Toggle(node.id, enabled)) },
     )
 
     override val root: View
@@ -46,7 +50,16 @@ class CustomNodesDesign(context: Context) : Design<CustomNodesDesign.Request>(co
     }
 
     fun requestCreate() {
-        requests.trySend(Request.Create)
+        PopupMenu(context, binding.addView).apply {
+            menu.add(R.string.new_custom_node).setOnMenuItemClickListener {
+                requests.trySend(Request.Create)
+                true
+            }
+            menu.add(R.string.import_custom_nodes).setOnMenuItemClickListener {
+                requests.trySend(Request.Import)
+                true
+            }
+        }.show()
     }
 
     suspend fun patchNodes(nodes: List<CustomNode>) {
@@ -67,7 +80,7 @@ class CustomNodesDesign(context: Context) : Design<CustomNodesDesign.Request>(co
         continuation.invokeOnCancellation { dialog.dismiss() }
     }
 
-    suspend fun requestNode(initial: CustomNode?, existingNames: Set<String>): CustomNode? {
+    suspend fun requestNode(initial: CustomNode?): CustomNode? {
         return suspendCancellableCoroutine { continuation ->
             val binding = CustomNodeDialogBinding.inflate(context.layoutInflater, context.root, false)
             val source = initial ?: CustomNode()
@@ -87,8 +100,10 @@ class CustomNodesDesign(context: Context) : Design<CustomNodesDesign.Request>(co
                 .setView(binding.root)
                 .setNegativeButton(R.string.cancel) { _, _ -> }
                 .setPositiveButton(R.string.save) { _, _ ->
+                    val name = binding.nameView.text?.toString()?.trim().orEmpty()
                     val result = source.copy(
-                        name = binding.nameView.text?.toString()?.trim().orEmpty(),
+                        name = name,
+                        conflictBase = source.conflictBase.takeIf { source.name == name },
                         server = binding.serverView.text?.toString()?.trim().orEmpty(),
                         port = binding.portView.text?.toString()?.trim()?.toInt() ?: source.port,
                         password = binding.passwordView.text?.toString().orEmpty(),
@@ -116,8 +131,6 @@ class CustomNodesDesign(context: Context) : Design<CustomNodesDesign.Request>(co
 
                 binding.nameLayout.error = when {
                     name.isBlank() -> context.getString(R.string.should_not_be_blank)
-                    name in existingNames -> context.getString(R.string.custom_node_name_exists)
-                    name in CustomNode.RESERVED_NAMES -> context.getString(R.string.custom_node_name_reserved)
                     else -> null
                 }
                 binding.serverLayout.error = if (binding.serverView.text?.isBlank() != false) {
