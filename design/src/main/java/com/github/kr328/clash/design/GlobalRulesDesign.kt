@@ -20,9 +20,10 @@ class GlobalRulesDesign(context: Context) : Design<GlobalRulesDesign.Request>(co
         data class Edit(val id: String) : Request()
         data class Delete(val id: String) : Request()
         data class Move(val id: String, val offset: Int) : Request()
+        data class Toggle(val id: String, val enabled: Boolean) : Request()
     }
 
-    data class RuleRow(val id: String, val text: String, val issue: String?)
+    data class RuleRow(val id: String, val text: String, val issue: String?, val enabled: Boolean)
 
     private val binding = DesignGlobalRulesBinding.inflate(context.layoutInflater, context.root, false)
     private val adapter = RuleAdapter()
@@ -67,6 +68,11 @@ class GlobalRulesDesign(context: Context) : Design<GlobalRulesDesign.Request>(co
             holder.binding.ruleText.text = row.text
             holder.binding.ruleIssue.text = row.issue
             holder.binding.ruleIssue.visibility = if (row.issue == null) View.GONE else View.VISIBLE
+            holder.binding.enabledView.setOnCheckedChangeListener(null)
+            holder.binding.enabledView.isChecked = row.enabled
+            holder.binding.enabledView.setOnCheckedChangeListener { _, enabled ->
+                requests.trySend(Request.Toggle(row.id, enabled))
+            }
             holder.binding.root.setOnClickListener { requests.trySend(Request.Edit(row.id)) }
             holder.binding.actionsView.setOnClickListener { anchor ->
                 val current = holder.bindingAdapterPosition.takeIf { it != RecyclerView.NO_POSITION }

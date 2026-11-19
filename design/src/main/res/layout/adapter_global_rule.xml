@@ -37,6 +37,12 @@
                 android:visibility="gone" />
         </LinearLayout>
 
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/enabled_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/enable_global_rule" />
+
         <ImageView
             android:id="@+id/actions_view"
             android:layout_width="@dimen/item_tailing_component_size"

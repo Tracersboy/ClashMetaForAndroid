@@ -33,6 +33,11 @@ class ProxyAdapter(
 
             isFocusable = isSelector
             isClickable = isSelector
+            contentDescription = if (current.proxy.isCustomNode) {
+                "${current.proxy.name}, ${config.customNodeLabel}"
+            } else {
+                null
+            }
 
             current.update(true)
         }

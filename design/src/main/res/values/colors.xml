@@ -10,4 +10,8 @@
     <color name="color_light_control_disabled">#FFD3D3D3</color>
     <color name="color_dark_control_disabled">#FF808080</color>
     <color name="color_error">#FFB00020</color>
+    <color name="custom_node_light_text">#195D52</color>
+    <color name="custom_node_light_badge">#DCEFEA</color>
+    <color name="custom_node_dark_text">#91D7C5</color>
+    <color name="custom_node_dark_badge">#254740</color>
 </resources>

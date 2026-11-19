@@ -13,6 +13,7 @@ data class Proxy(
     val type: String,
     val delay: Int,
     var isGroup: Boolean,
+    val isCustomNode: Boolean = false,
 ) : Parcelable {
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         Parcelizer.encodeToParcel(serializer(), parcel, this)

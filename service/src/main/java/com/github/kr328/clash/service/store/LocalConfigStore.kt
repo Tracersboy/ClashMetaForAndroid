@@ -23,7 +23,7 @@ data class SavedLocalConfig(
 ) {
     fun forCore() = LocalConfig(
         nodes = nodes.map { LocalProxy(it.id, it.toConfig(), it.enabled, it.conflictBase) },
-        rules = rules,
+        rules = rules.filter(GlobalRule::enabled),
     )
 
     fun targetFor(rule: GlobalRule): String =
@@ -114,6 +114,10 @@ class LocalConfigStore(private val context: Context) {
 
     fun editRules(edit: (List<GlobalRule>) -> List<GlobalRule>): SavedLocalConfig = update { state ->
         state.copy(rules = edit(state.rules))
+    }
+
+    fun restore(backup: LocalConfigBackup): SavedLocalConfig = update { state ->
+        state.copy(nodes = backup.nodes, rules = backup.rules, renameNotices = emptyList())
     }
 
     fun acceptReport(report: LocalConfigReport, profile: UUID, applied: Boolean): Boolean {

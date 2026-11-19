@@ -3,6 +3,7 @@ package tunnel
 import (
 	"sort"
 	"strings"
+	"sync/atomic"
 
 	"github.com/dlclark/regexp2"
 
@@ -22,18 +23,32 @@ const (
 )
 
 type Proxy struct {
-	Name     string `json:"name"`
-	Title    string `json:"title"`
-	Subtitle string `json:"subtitle"`
-	Type     string `json:"type"`
-	Delay    int    `json:"delay"`
-	IsGroup  bool   `json:"isGroup"`
+	Name         string `json:"name"`
+	Title        string `json:"title"`
+	Subtitle     string `json:"subtitle"`
+	Type         string `json:"type"`
+	Delay        int    `json:"delay"`
+	IsGroup      bool   `json:"isGroup"`
+	IsCustomNode bool   `json:"isCustomNode,omitempty"`
 }
 
 type ProxyGroup struct {
 	Type    string   `json:"type"`
 	Now     string   `json:"now"`
 	Proxies []*Proxy `json:"proxies"`
+}
+
+var customProxies atomic.Value
+
+func SetCustomProxies(proxies map[string]C.Proxy, nodeNames map[string]string) {
+	// A provider can later supply a proxy with the same name. Keep the loaded adapter identity.
+	loaded := make(map[string]C.Proxy, len(nodeNames))
+	for _, name := range nodeNames {
+		if proxy := proxies[name]; proxy != nil {
+			loaded[name] = proxy
+		}
+	}
+	customProxies.Store(loaded)
 }
 
 type sortableProxyList struct {
@@ -170,6 +185,7 @@ func PatchSelector(selector, name string, closeConnections bool) bool {
 
 func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp) []*Proxy {
 	result := make([]*Proxy, 0, 128)
+	custom, _ := customProxies.Load().(map[string]C.Proxy)
 
 	for _, p := range proxies {
 		name := p.Name()
@@ -196,12 +212,13 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp) []*Pro
 		_, isGroup := p.Adapter().(outboundgroup.ProxyGroup)
 
 		result = append(result, &Proxy{
-			Name:     name,
-			Title:    strings.TrimSpace(title),
-			Subtitle: strings.TrimSpace(subtitle),
-			Type:     p.Type().String(),
-			Delay:    int(p.LastDelayForTestUrl(testURL)),
-			IsGroup:  isGroup,
+			Name:         name,
+			Title:        strings.TrimSpace(title),
+			Subtitle:     strings.TrimSpace(subtitle),
+			Type:         p.Type().String(),
+			Delay:        int(p.LastDelayForTestUrl(testURL)),
+			IsGroup:      isGroup,
+			IsCustomNode: custom[name] == p,
 		})
 	}
 	return result

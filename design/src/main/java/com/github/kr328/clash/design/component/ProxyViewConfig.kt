@@ -2,6 +2,8 @@ package com.github.kr328.clash.design.component
 
 import android.content.Context
 import android.graphics.Color
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.util.getPixels
 import com.github.kr328.clash.design.util.resolveThemedColor
@@ -9,6 +11,7 @@ import com.github.kr328.clash.design.util.resolveThemedResourceId
 
 class ProxyViewConfig(val context: Context, var proxyLine: Int) {
     private val colorSurface = context.resolveThemedColor(com.google.android.material.R.attr.colorSurface)
+    private val darkSurface = ColorUtils.calculateLuminance(colorSurface) < 0.5
 
     val clickableBackground =
         context.resolveThemedResourceId(android.R.attr.selectableItemBackground)
@@ -19,6 +22,13 @@ class ProxyViewConfig(val context: Context, var proxyLine: Int) {
     val unselectedControl = context.resolveThemedColor(com.google.android.material.R.attr.colorOnSurface)
     val unselectedBackground: Int
         get() = if (proxyLine==1) Color.TRANSPARENT else colorSurface
+
+    val customNodeLabel = context.getString(R.string.proxy_custom_node)
+    val customNodeLightText = ContextCompat.getColor(context, R.color.custom_node_light_text)
+    val customNodeLightBadge = ContextCompat.getColor(context, R.color.custom_node_light_badge)
+    val customNodeText = if (darkSurface) ContextCompat.getColor(context, R.color.custom_node_dark_text) else customNodeLightText
+    val customNodeBadge = if (darkSurface) ContextCompat.getColor(context, R.color.custom_node_dark_badge) else customNodeLightBadge
+    val badgePadding = context.getPixels(R.dimen.proxy_custom_badge_padding).toFloat()
 
     val layoutPadding = context.getPixels(R.dimen.proxy_layout_padding).toFloat()
     val contentPadding

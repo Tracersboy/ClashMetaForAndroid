@@ -375,24 +375,11 @@
     <string name="shortcut_stop_long">Stop Clash service</string>
 
     <string name="custom_nodes">Custom Nodes</string>
-    <string name="new_custom_node">New AnyTLS Node</string>
-    <string name="edit_custom_node">Edit AnyTLS Node</string>
+    <string name="edit_custom_node">Edit node YAML</string>
     <string name="delete_custom_node">Delete Node</string>
     <string name="delete_custom_node_warning">Delete %1$s? It will also be removed from all proxy groups after reload.</string>
-    <string name="custom_node_server">Server</string>
-    <string name="custom_node_port">Port</string>
-    <string name="custom_node_password">Password</string>
-    <string name="custom_node_client_fingerprint">Client Fingerprint</string>
-    <string name="custom_node_sni">SNI (optional)</string>
-    <string name="custom_node_alpn">ALPN (optional)</string>
-    <string name="custom_node_alpn_hint">Separate values with commas, for example: h2, http/1.1</string>
-    <string name="custom_node_udp">Enable UDP</string>
-    <string name="custom_node_skip_cert_verify">Skip certificate verification</string>
-    <string name="custom_node_name_exists">This name already exists</string>
-    <string name="custom_node_name_reserved">This name is reserved by the core</string>
-    <string name="invalid_custom_node_port">Enter a port from 1 to 65535</string>
-    <string name="format_custom_node_address">AnyTLS · %1$s:%2$d</string>
     <string name="import_custom_nodes">Paste node YAML</string>
+    <string name="proxy_custom_node">Custom</string>
     <string name="inject_custom_node">Inject this node</string>
     <string name="format_custom_node_detail">%1$s · %2$s</string>
     <string name="custom_node_yaml_hint">Paste a Mihomo proxy object or YAML list</string>
@@ -402,6 +389,7 @@
     <string name="custom_node_rename_pair">%1$s → %2$s</string>
     <string name="local_configuration_one_entry">Enter one entry</string>
     <string name="global_rules">Global rules</string>
+    <string name="enable_global_rule">Enable this rule</string>
     <string name="global_rule_type">Rule type</string>
     <string name="global_rule_match">Match value</string>
     <string name="global_rule_target">Policy or outbound name</string>
@@ -423,5 +411,12 @@
     <string name="move_rule_up">Move up</string>
     <string name="move_rule_down">Move down</string>
     <string name="global_rule_actions">Rule actions</string>
+    <string name="local_backup_title">Backup and restore</string>
+    <string name="local_backup_export">Export backup (includes node credentials)</string>
+    <string name="local_backup_restore">Restore backup</string>
+    <string name="local_backup_restore_preview">This backup contains %1$d custom nodes and %2$d global rules. Restoring will replace both lists on this device.</string>
+    <string name="local_backup_restored">Backup restored</string>
+    <string name="local_backup_export_error">Could not write the backup file.</string>
+    <string name="local_backup_restore_error">Could not restore the backup. Check that the file is a valid backup from this app.</string>
     <string name="copy_log">Copy log</string>
 </resources>

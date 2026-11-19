@@ -9,6 +9,7 @@ import (
 
 	"cfa/native/app"
 	"cfa/native/localconfig"
+	"cfa/native/tunnel"
 
 	"github.com/metacubex/mihomo/common/yaml"
 	"github.com/metacubex/mihomo/config"
@@ -68,6 +69,7 @@ func Load(path string, settings localconfig.Settings, apply bool) (localconfig.R
 	}
 	logDns(raw)
 	hub.ApplyConfig(cfg)
+	tunnel.SetCustomProxies(cfg.Proxies, report.NodeNames)
 	app.ApplySubtitlePattern(raw.ClashForAndroid.UiSubtitlePattern)
 	runtime.GC()
 	return report, nil
@@ -80,4 +82,5 @@ func LoadDefault() {
 	}
 
 	hub.ApplyConfig(cfg)
+	tunnel.SetCustomProxies(nil, nil)
 }

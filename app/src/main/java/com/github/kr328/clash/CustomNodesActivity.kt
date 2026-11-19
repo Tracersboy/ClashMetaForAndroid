@@ -47,12 +47,6 @@ class CustomNodesActivity : BaseActivity<CustomNodesDesign>() {
                 }
                 design.requests.onReceive {
                     when (val request = it) {
-                        CustomNodesDesign.Request.Create -> {
-                            val node = design.requestNode(null)
-                            if (node != null) {
-                                applyChange { store.saveNodes(listOf(node.copy(id = UUID.randomUUID().toString()))) }
-                            }
-                        }
                         CustomNodesDesign.Request.Import -> {
                             val input = requestLocalInput(R.string.import_custom_nodes, rules = false)
                             if (input != null) {
@@ -62,15 +56,13 @@ class CustomNodesActivity : BaseActivity<CustomNodesDesign>() {
                         }
                         is CustomNodesDesign.Request.Edit -> {
                             val old = request.node
-                            val updated = if (old.config == null) {
-                                design.requestNode(old)
-                            } else {
-                                val initial = prettyJson.encodeToString(JsonObject.serializer(), old.toConfig())
-                                requestLocalInput(R.string.edit_custom_node, rules = false, single = true, initial = initial)
-                                    ?.nodes?.single()?.let { CustomNode.fromConfig(old.id, it) }
-                                    ?.let { it.copy(conflictBase = old.conflictBase.takeIf { _ -> it.name == old.name }) }
+                            val initial = prettyJson.encodeToString(JsonObject.serializer(), old.toConfig())
+                            val input = requestLocalInput(R.string.edit_custom_node, rules = false, single = true, initial = initial)
+                            if (input != null) {
+                                val updated = CustomNode.fromConfig(old.id, input.nodes.single())
+                                val node = updated.copy(conflictBase = old.conflictBase.takeIf { updated.name == old.name })
+                                applyChange { store.saveNodes(listOf(node)) }
                             }
-                            if (updated != null) applyChange { store.saveNodes(listOf(updated)) }
                         }
                         is CustomNodesDesign.Request.Delete ->
                             if (design.confirmDelete(request.node)) applyChange { store.deleteNode(request.node.id) }

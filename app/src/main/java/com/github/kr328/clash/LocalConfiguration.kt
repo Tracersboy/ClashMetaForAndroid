@@ -65,7 +65,12 @@ internal fun newGlobalRule(
 ): GlobalRule {
     val nodeId = if (definition.type == "SUB-RULE") null
     else nodeNames.entries.firstOrNull { it.value == definition.target }?.key
-    return GlobalRule(previous?.id ?: UUID.randomUUID().toString(), definition, nodeId)
+    return GlobalRule(
+        id = previous?.id ?: UUID.randomUUID().toString(),
+        definition = definition,
+        nodeId = nodeId,
+        enabled = previous?.enabled ?: true,
+    )
 }
 
 internal suspend fun Context.confirmCatchAll(definitions: List<RuleDefinition>): Boolean =

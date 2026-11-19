@@ -31,14 +31,14 @@ class GlobalRulesActivity : BaseActivity<GlobalRulesDesign>() {
             }
             val issues = report?.ruleIssues.orEmpty().associate { it.id to it.reason }
             design.patchRules(state.rules.map { rule ->
-                val issue = when (issues[rule.id]) {
+                val issue = when (issues[rule.id].takeIf { rule.enabled }) {
                     "target" -> getString(R.string.global_rule_missing_target)
                     "rule_set" -> getString(R.string.global_rule_missing_set)
                     "sub_rule" -> getString(R.string.global_rule_missing_sub_rule)
                     "invalid" -> getString(R.string.global_rule_invalid)
                     else -> null
                 }
-                GlobalRulesDesign.RuleRow(rule.id, rule.definition.line(state.targetFor(rule)), issue)
+                GlobalRulesDesign.RuleRow(rule.id, rule.definition.line(state.targetFor(rule)), issue, rule.enabled)
             })
         }
 
@@ -93,6 +93,9 @@ class GlobalRulesActivity : BaseActivity<GlobalRulesDesign>() {
                             val to = from + request.offset
                             if (from in rules.indices && to in rules.indices) rules.toMutableList().also { Collections.swap(it, from, to) }
                             else rules
+                        }
+                        is GlobalRulesDesign.Request.Toggle -> change { rules ->
+                            rules.map { if (it.id == request.id) it.copy(enabled = request.enabled) else it }
                         }
                         is GlobalRulesDesign.Request.Delete ->
                             if (confirmLocalAction(R.string.delete_global_rule, getString(R.string.delete_global_rule_warning))) {

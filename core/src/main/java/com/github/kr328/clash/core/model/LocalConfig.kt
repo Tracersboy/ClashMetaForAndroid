@@ -35,6 +35,7 @@ data class GlobalRule(
     val id: String,
     val definition: RuleDefinition,
     val nodeId: String? = null,
+    val enabled: Boolean = true,
 )
 
 @Serializable

@@ -2,7 +2,6 @@ package com.github.kr328.clash
 
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.Clash
-import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.design.ProxyDesign
 import com.github.kr328.clash.design.model.ProxyState
 import com.github.kr328.clash.util.withClash
@@ -29,13 +28,11 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
 
         setContentDesign(design)
 
-        design.requests.send(ProxyDesign.Request.ReloadAll)
-
         while (isActive) {
             select<Unit> {
                 events.onReceive {
                     when (it) {
-                        Event.ProfileLoaded -> {
+                        Event.ActivityStart, Event.ProfileLoaded -> {
                             val newNames = withClash {
                                 queryProxyGroupNames(uiStore.proxyExcludeNotSelectable)
                             }
@@ -44,6 +41,8 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                                 startActivity(ProxyActivity::class.intent)
 
                                 finish()
+                            } else {
+                                design.requests.trySend(ProxyDesign.Request.ReloadAll)
                             }
                         }
                         else -> Unit

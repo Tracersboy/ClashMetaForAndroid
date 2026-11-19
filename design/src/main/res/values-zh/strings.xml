@@ -284,24 +284,11 @@
     <string name="shortcut_stop_long">停止 Clash 服务</string>
 
     <string name="custom_nodes">自建节点</string>
-    <string name="new_custom_node">新建 AnyTLS 节点</string>
-    <string name="edit_custom_node">编辑 AnyTLS 节点</string>
+    <string name="edit_custom_node">编辑节点 YAML</string>
     <string name="delete_custom_node">删除节点</string>
     <string name="delete_custom_node_warning">确定删除 %1$s 吗？重新加载后，该节点也会从所有策略组移除。</string>
-    <string name="custom_node_server">服务器</string>
-    <string name="custom_node_port">端口</string>
-    <string name="custom_node_password">密码</string>
-    <string name="custom_node_client_fingerprint">客户端指纹</string>
-    <string name="custom_node_sni">SNI（可选）</string>
-    <string name="custom_node_alpn">ALPN（可选）</string>
-    <string name="custom_node_alpn_hint">使用逗号分隔，例如：h2, http/1.1</string>
-    <string name="custom_node_udp">启用 UDP</string>
-    <string name="custom_node_skip_cert_verify">跳过证书校验</string>
-    <string name="custom_node_name_exists">该名称已存在</string>
-    <string name="custom_node_name_reserved">该名称是核心保留名称</string>
-    <string name="invalid_custom_node_port">请输入 1 到 65535 的端口</string>
-    <string name="format_custom_node_address">AnyTLS · %1$s:%2$d</string>
     <string name="import_custom_nodes">粘贴节点 YAML</string>
+    <string name="proxy_custom_node">自建</string>
     <string name="inject_custom_node">注入此节点</string>
     <string name="format_custom_node_detail">%1$s · %2$s</string>
     <string name="custom_node_yaml_hint">粘贴 Mihomo 节点或 YAML 列表</string>
@@ -311,6 +298,7 @@
     <string name="custom_node_rename_pair">%1$s → %2$s</string>
     <string name="local_configuration_one_entry">请仅输入一条</string>
     <string name="global_rules">全局规则</string>
+    <string name="enable_global_rule">启用此规则</string>
     <string name="global_rule_type">规则类型</string>
     <string name="global_rule_match">匹配值</string>
     <string name="global_rule_target">目标策略或出站名称</string>
@@ -332,5 +320,12 @@
     <string name="move_rule_up">上移</string>
     <string name="move_rule_down">下移</string>
     <string name="global_rule_actions">规则操作</string>
+    <string name="local_backup_title">备份与恢复</string>
+    <string name="local_backup_export">导出备份（含节点凭据）</string>
+    <string name="local_backup_restore">恢复备份</string>
+    <string name="local_backup_restore_preview">备份中有 %1$d 个自建节点和 %2$d 条全局规则。确认恢复后将替换本机的这两份配置。</string>
+    <string name="local_backup_restored">已恢复备份</string>
+    <string name="local_backup_export_error">无法写入备份文件。</string>
+    <string name="local_backup_restore_error">无法恢复备份。请确认文件是此应用导出的有效备份。</string>
     <string name="copy_log">复制日志</string>
 </resources>

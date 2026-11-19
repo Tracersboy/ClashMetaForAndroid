@@ -149,14 +149,6 @@ class ProxyView(
             null,
         )
 
-        // measure subtitle text bounds
-        val subtitleCount = paint.breakText(
-            state.subtitle,
-            false,
-            mainTextWidth,
-            null,
-        )
-
         // text draw measure
         val textOffset = (paint.descent() + paint.ascent()) / 2
 
@@ -180,16 +172,42 @@ class ProxyView(
             val y = state.config.layoutPadding +
                     (height - state.config.layoutPadding * 2) / 3f - textOffset
 
+            if (state.proxy.isCustomNode && !state.selected) {
+                paint.color = state.config.customNodeText
+            }
             drawText(state.title, 0, titleCount, x, y, paint)
         }
 
         // draw subtitle
         canvas.apply {
-            val x = state.config.layoutPadding + state.config.contentPadding
-            val y = state.config.layoutPadding +
-                    (height - state.config.layoutPadding * 2) / 3f * 2 - textOffset
+            val config = state.config
+            var x = config.layoutPadding + config.contentPadding
+            val centerY = config.layoutPadding + (height - config.layoutPadding * 2) / 3f * 2
+            var availableWidth = mainTextWidth
 
-            drawText(state.subtitle, 0, subtitleCount, x, y, paint)
+            if (state.proxy.isCustomNode) {
+                paint.textSize = config.textSize * 0.85f
+                val label = config.customNodeLabel
+                val pillWidth = paint.measureText(label) + config.badgePadding * 2
+
+                if (pillWidth <= availableWidth) {
+                    val radius = (paint.descent() - paint.ascent()) / 2f
+                    paint.color = if (state.selected) config.customNodeLightBadge else config.customNodeBadge
+                    drawRoundRect(x, centerY - radius, x + pillWidth, centerY + radius, radius, radius, paint)
+                    paint.color = if (state.selected) config.customNodeLightText else config.customNodeText
+                    val badgeBaseline = centerY - (paint.descent() + paint.ascent()) / 2f
+                    drawText(label, x + config.badgePadding, badgeBaseline, paint)
+
+                    val offset = pillWidth + config.badgePadding
+                    x += offset
+                    availableWidth = (availableWidth - offset).coerceAtLeast(0f)
+                }
+            }
+
+            paint.textSize = config.textSize
+            paint.color = state.controls
+            val count = paint.breakText(state.subtitle, false, availableWidth, null)
+            drawText(state.subtitle, 0, count, x, centerY - textOffset, paint)
         }
     }
 }
