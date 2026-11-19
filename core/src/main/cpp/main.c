@@ -578,7 +578,7 @@ JNI_OnLoad(JavaVM *vm, void *reserved) {
     m_fetch_callback_report = find_method(c_fetch_callback, "report",
                                           "(Ljava/lang/String;)V");
     m_fetch_callback_complete = find_method(c_fetch_callback, "complete",
-                                            "(Ljava/lang/String;Ljava/lang/String;)V");)V");
+                                            "(Ljava/lang/String;Ljava/lang/String;)V");
     m_completable_complete_exceptionally = find_method(c_completable, "completeExceptionally",
                                                        "(Ljava/lang/Throwable;)Z");
     m_logcat_interface_received = find_method(c_logcat_interface, "received",
