@@ -43,6 +43,7 @@ object Bridge {
         name: String
     )
 
+    external fun nativeSetCustomNodes(content: String)
     external fun nativeReadOverride(slot: Int): String
     external fun nativeWriteOverride(slot: Int, content: String)
     external fun nativeClearOverride(slot: Int)

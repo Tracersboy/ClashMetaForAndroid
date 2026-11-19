@@ -186,6 +186,10 @@ object Clash {
         }
     }
 
+    fun setCustomNodes(content: String) {
+        Bridge.nativeSetCustomNodes(content)
+    }
+
     fun queryOverride(slot: OverrideSlot): ConfigurationOverride {
         return try {
             ConfigurationOverrideJson.decodeFromString(

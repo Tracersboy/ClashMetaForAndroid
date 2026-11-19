@@ -19,6 +19,7 @@ import (
 var processors = []processor{
 	patchExternalController, // must before patchOverride, so we only apply ExternalController in Override settings
 	patchOverride,
+	patchCustomNodes,
 	patchGeneral,
 	patchProfile,
 	patchDns,

@@ -49,6 +49,11 @@ func load(completable unsafe.Pointer, path C.c_string) {
 	}(C.GoString(path))
 }
 
+//export setCustomNodes
+func setCustomNodes(content C.c_string) {
+	config.SetCustomNodes(C.GoString(content))
+}
+
 //export readOverride
 func readOverride(slot C.int) *C.char {
 	return C.CString(config.ReadOverride(config.OverrideSlot(slot)))

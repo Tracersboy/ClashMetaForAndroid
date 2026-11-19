@@ -143,6 +143,8 @@ object ProfileProcessor {
         var subscriptionInfo: FetchStatus? = null
         var cb = callback
 
+        Clash.setCustomNodes(ServiceStore(context).customNodesConfigJson())
+
         Clash.fetchAndValid(context.processingDir, source, force) {
             if (it.action == FetchStatus.Action.SubscriptionInfo) {
                 subscriptionInfo = it

@@ -373,4 +373,23 @@
     <string name="shortcut_start_long">Start Clash service</string>
     <string name="shortcut_stop_short">Stop Clash</string>
     <string name="shortcut_stop_long">Stop Clash service</string>
+
+    <string name="custom_nodes">Custom Nodes</string>
+    <string name="new_custom_node">New AnyTLS Node</string>
+    <string name="edit_custom_node">Edit AnyTLS Node</string>
+    <string name="delete_custom_node">Delete Node</string>
+    <string name="delete_custom_node_warning">Delete %1$s? It will also be removed from all proxy groups after reload.</string>
+    <string name="custom_node_server">Server</string>
+    <string name="custom_node_port">Port</string>
+    <string name="custom_node_password">Password</string>
+    <string name="custom_node_client_fingerprint">Client Fingerprint</string>
+    <string name="custom_node_sni">SNI (optional)</string>
+    <string name="custom_node_alpn">ALPN (optional)</string>
+    <string name="custom_node_alpn_hint">Separate values with commas, for example: h2, http/1.1</string>
+    <string name="custom_node_udp">Enable UDP</string>
+    <string name="custom_node_skip_cert_verify">Skip certificate verification</string>
+    <string name="custom_node_name_exists">This name already exists</string>
+    <string name="custom_node_name_reserved">This name is reserved by the core</string>
+    <string name="invalid_custom_node_port">Enter a port from 1 to 65535</string>
+    <string name="format_custom_node_address">AnyTLS · %1$s:%2$d</string>
 </resources>

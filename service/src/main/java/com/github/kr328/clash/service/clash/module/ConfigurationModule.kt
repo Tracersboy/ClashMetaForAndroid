@@ -56,6 +56,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                     ?: throw NullPointerException("No profile selected")
 
                 Clash.setAgeSecretKey(active.ageSecretKey?.takeIf { it.isNotBlank() })
+                Clash.setCustomNodes(store.customNodesConfigJson())
 
                 Clash.load(service.importedDir.resolve(active.uuid.toString())).await()
 

@@ -282,4 +282,23 @@
     <string name="shortcut_start_long">启动 Clash 服务</string>
     <string name="shortcut_stop_short">停止 Clash</string>
     <string name="shortcut_stop_long">停止 Clash 服务</string>
+
+    <string name="custom_nodes">自建节点</string>
+    <string name="new_custom_node">新建 AnyTLS 节点</string>
+    <string name="edit_custom_node">编辑 AnyTLS 节点</string>
+    <string name="delete_custom_node">删除节点</string>
+    <string name="delete_custom_node_warning">确定删除 %1$s 吗？重新加载后，该节点也会从所有策略组移除。</string>
+    <string name="custom_node_server">服务器</string>
+    <string name="custom_node_port">端口</string>
+    <string name="custom_node_password">密码</string>
+    <string name="custom_node_client_fingerprint">客户端指纹</string>
+    <string name="custom_node_sni">SNI（可选）</string>
+    <string name="custom_node_alpn">ALPN（可选）</string>
+    <string name="custom_node_alpn_hint">使用逗号分隔，例如：h2, http/1.1</string>
+    <string name="custom_node_udp">启用 UDP</string>
+    <string name="custom_node_skip_cert_verify">跳过证书校验</string>
+    <string name="custom_node_name_exists">该名称已存在</string>
+    <string name="custom_node_name_reserved">该名称是核心保留名称</string>
+    <string name="invalid_custom_node_port">请输入 1 到 65535 的端口</string>
+    <string name="format_custom_node_address">AnyTLS · %1$s:%2$d</string>
 </resources>

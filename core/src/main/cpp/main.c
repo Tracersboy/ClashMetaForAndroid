@@ -343,6 +343,16 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeUpdateProvider(JNIEnv *env,
     updateProvider(_completable, _type, _name);
 }
 
+JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeSetCustomNodes(JNIEnv *env, jobject thiz,
+                                                                    jstring content) {
+    TRACE_METHOD();
+
+    scoped_string _content = get_string(content);
+
+    setCustomNodes(_content);
+}
+
 JNIEXPORT jstring JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeReadOverride(JNIEnv *env, jobject thiz,
                                                                   jint slot) {
